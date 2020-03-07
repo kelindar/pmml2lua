@@ -22,10 +22,24 @@ func (w *Writer) CompoundPredicate(v *schema.CompoundPredicate) error {
 		return errNilElement
 	}
 
+	for i, p := range v.Predicates {
+		if err := w.Each(
+			w.Append("("),
+			w.Predicate(&p),
+			w.Append(")"),
+		); err != nil {
+			return err
+		}
+
+		if i+1 < len(v.Predicates) {
+			w.Append(" %v ", v.Operator)
+		}
+	}
+
 	// local foo = function() print(%a) end
 
 	// Generate child predicates
-	w.Append("eval.%v( ", v.Operator)
+	/*w.Append("%v( ", strings.Title(v.Operator))
 	for i, p := range v.Predicates {
 		if err := w.Predicate(&p); err != nil {
 			return err
@@ -35,12 +49,12 @@ func (w *Writer) CompoundPredicate(v *schema.CompoundPredicate) error {
 			w.Append(", ")
 		}
 	}
-	w.Append(" )")
+	w.Append(" )")*/
 
 	/*
 		http://dmg.org/pmml/v4-1/TreeModel.html
 
-		P	Q	P and Q	P or Q	P xor Q
+		P       Q       AND     OR      XOR
 		True	True	True	True	False
 		True	False	False	True	True
 		True	Unknown	Unknown	True	Unknown
@@ -85,10 +99,13 @@ func (w *Writer) SimplePredicate(v *schema.SimplePredicate) error {
 
 	return w.Each(
 		w.Field(v.Field),
+		w.Append(" and "),
+		w.Field(v.Field),
 		w.Whitespace(),
 		w.BinaryOperator(v.Operator),
 		w.Whitespace(),
 		w.Value(v.Value),
+		w.Append(""),
 	)
 }
 

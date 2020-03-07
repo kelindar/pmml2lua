@@ -20,6 +20,7 @@ func TestCompoundPredicate(t *testing.T) {
 
 	var out schema.Predicate
 	w, r := writerFor(input, &out)
+	//w.Builtins()
 	assert.NoError(t, w.CompoundPredicate(out.CompoundPredicate))
 
 	println(r())
@@ -31,59 +32,65 @@ func TestSimplePredicate(t *testing.T) {
 		xml    string      // The XML document to parse
 		lua    string      // The output LUA code
 		input  interface{} // The input data
-		expect bool        // The expected result
+		expect interface{} // The expected result
 	}{
 		{
 			xml:    `<SimplePredicate field="wallet" operator="lessThan" value="0.08086312118570185"/>`,
-			lua:    `v.wallet < 0.08086312118570185`,
+			lua:    `v.wallet and v.wallet < 0.08086312118570185`,
+			input:  map[string]float64{},
+			expect: nil,
+		},
+		{
+			xml:    `<SimplePredicate field="wallet" operator="lessThan" value="0.08086312118570185"/>`,
+			lua:    `v.wallet and v.wallet < 0.08086312118570185`,
 			input:  map[string]float64{"wallet": 0.05},
 			expect: true,
 		},
 		{
 			xml:    `<SimplePredicate field="wallet" operator="lessThan" value="0.08086312118570185"/>`,
-			lua:    `v.wallet < 0.08086312118570185`,
+			lua:    `v.wallet and v.wallet < 0.08086312118570185`,
 			input:  map[string]float64{"wallet": 0.09},
 			expect: false,
 		},
 		{
 			xml:    `<SimplePredicate field="wallet" operator="lessOrEqual" value="0.08"/>`,
-			lua:    `v.wallet <= 0.08`,
+			lua:    `v.wallet and v.wallet <= 0.08`,
 			input:  map[string]float64{"wallet": 0.08},
 			expect: true,
 		},
 		{
 			xml:    `<SimplePredicate field="name" operator="equal" value="Roman"/>`,
-			lua:    `v.name == 'Roman'`,
+			lua:    `v.name and v.name == 'Roman'`,
 			input:  map[string]string{"name": "Roman"},
 			expect: true,
 		},
 		{
 			xml:    `<SimplePredicate field="name" operator="notEqual" value="Wenbo"/>`,
-			lua:    `v.name ~= 'Wenbo'`,
+			lua:    `v.name and v.name ~= 'Wenbo'`,
 			input:  map[string]string{"name": "Roman"},
 			expect: true,
 		},
 		{
 			xml:    `<SimplePredicate field="name" operator="notEqual" value="Roman"/>`,
-			lua:    `v.name ~= 'Roman'`,
+			lua:    `v.name and v.name ~= 'Roman'`,
 			input:  map[string]string{"name": "Roman"},
 			expect: false,
 		},
 		{
 			xml:    `<SimplePredicate field="age" operator="greaterThan" value="30"/>`,
-			lua:    `v.age > 30`,
+			lua:    `v.age and v.age > 30`,
 			input:  map[string]float64{"age": 30},
 			expect: false,
 		},
 		{
 			xml:    `<SimplePredicate field="age" operator="greaterThan" value="30"/>`,
-			lua:    `v.age > 30`,
+			lua:    `v.age and v.age > 30`,
 			input:  map[string]float64{"age": 31},
 			expect: true,
 		},
 		{
 			xml:    `<SimplePredicate field="age" operator="greaterOrEqual" value="30"/>`,
-			lua:    `v.age >= 30`,
+			lua:    `v.age and v.age >= 30`,
 			input:  map[string]float64{"age": 30},
 			expect: true,
 		},
@@ -102,7 +109,15 @@ func TestSimplePredicate(t *testing.T) {
 			s := makeScript("return %v", r())
 			v, err := s.Run(context.Background(), tt.input)
 			assert.NoError(t, err)
-			assert.Equal(t, tt.expect, bool(v.(lua.Bool)))
+
+			var result interface{}
+			switch v := v.(type) {
+			case lua.Nil:
+				result = nil
+			case lua.Bool:
+				result = bool(v)
+			}
+			assert.Equal(t, tt.expect, result)
 		})
 	}
 }

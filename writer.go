@@ -110,3 +110,28 @@ func (w *Writer) OneOf(errs ...error) error {
 	}
 	return errNilElement
 }
+
+// Builtins writes builtin functions
+func (w *Writer) Builtins() error {
+	return w.Append(`
+-- Checks if the value is missing
+local function Unknown(v)
+	return v == nil or v == ''
+end
+
+-- Performs a logical AND operation on the arguments
+local And(...)
+	local 
+	for i, v in ipairs(arg) do
+		if Unknown(v) then 
+			return false
+		end
+		if not v then
+			return false
+		end
+	end
+	return true
+end
+
+`)
+}
