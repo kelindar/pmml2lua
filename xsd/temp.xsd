@@ -1,0 +1,24 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="http://www.dmg.org/PMML-4_4" elementFormDefault="unqualified" targetNamespace="http://www.dmg.org/PMML-4_4">
+
+
+<xs:complexType name="ArrayType" mixed="true">
+  <xs:attribute name="n" type="INT-NUMBER" use="optional"/>
+  <xs:attribute name="type" use="required">
+    <xs:simpleType>
+      <xs:restriction base="xs:string">
+        <xs:enumeration value="int"/>
+        <xs:enumeration value="real"/>
+        <xs:enumeration value="string"/>
+      </xs:restriction>
+    </xs:simpleType>
+  </xs:attribute>
+</xs:complexType>
+<xs:element name="Array" type="ArrayType"/>
+<xs:group name="NUM-ARRAY">
+  <xs:choice>
+    <xs:element ref="Array"/>
+  </xs:choice>
+</xs:group>
+
+
+</xs:schema>
