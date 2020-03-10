@@ -43,6 +43,20 @@ func TestCompoundPredicate(t *testing.T) {
 		Unknown	Unknown	Unknown	Unknown	Unknown
 
 	*/
+
+	/*
+		local V = {true, false, nil}
+
+		for i = 1, 3 do
+		for j = 1, 3 do
+			local P = V[i]
+			local Q = V[j]
+			local R = Or({P, Q; n=2})
+			print(P, Q, R)
+		end
+		end
+
+	*/
 }
 
 func TestSimplePredicate(t *testing.T) {

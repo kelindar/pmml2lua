@@ -12,6 +12,9 @@ local eval = {}
 -- Unknown	False	False	Unknown	Unknown
 -- Unknown	Unknown	Unknown	Unknown	Unknown
 
+
+
+
 -- Checks if the value is missing
 function Unknown(v)
 	return v == nil or v == ''
@@ -68,4 +71,31 @@ function eval.Or(arr)
     return result
 end
 
+-- Xor performs a logical XOR operation on a set of nullable boolean values
+-- true	    true	false
+-- true	    false	true
+-- true	    nil	    nil
+-- false	true	true
+-- false	false	false
+-- false	nil	    nil
+-- nil	    true	nil
+-- nil	    false	nil
+-- nil	    nil	    nil
+function Xor(arr)
+    local result = false
+    for i=1, arr.n do
+        local v = arr[i]
+        if Unknown(v) then
+            return nil
+        end
+        result = nand(nand(result, nand(result, v)), nand(v, nand(result, v)))
+    end
+    return result
+end
+
+-- Inverted AND operator
+function nand(a, b)
+    return not (a and b)
+end
+ 
 return eval
