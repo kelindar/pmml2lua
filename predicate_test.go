@@ -25,7 +25,7 @@ func TestCompoundPredicate(t *testing.T) {
 	)
 
 	assert.Contains(t, code(),
-		`eval.Or(eval.And(v.temperature and v.temperature < 90, v.temperature and v.temperature > 50), v.humidity and v.humidity >= 80)`,
+		`eval.Or({eval.And({v.temperature and v.temperature < 90, v.temperature and v.temperature > 50; n=2}), v.humidity and v.humidity >= 80; n=2})`,
 	)
 
 	/*

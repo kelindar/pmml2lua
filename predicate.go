@@ -33,7 +33,7 @@ func (s *Scope) Predicate(v *schema.Predicate, global *Scope) Compiler {
 
 // CompoundPredicate generates the LUA code for the element.
 func (s *Statement) CompoundPredicate(v *schema.CompoundPredicate, global *Scope) *Statement {
-	s.Append("eval.%s(", strings.Title(v.Operator))
+	s.Append("eval.%s({", strings.Title(v.Operator))
 	for i, p := range v.Predicates {
 		switch fn := global.Predicate(&p, global).(type) {
 		case *Scope:
@@ -46,7 +46,7 @@ func (s *Statement) CompoundPredicate(v *schema.CompoundPredicate, global *Scope
 			s.Append(", ")
 		}
 	}
-	s.Append(")")
+	s.Append("; n=%d})", len(v.Predicates))
 	return s
 }
 
