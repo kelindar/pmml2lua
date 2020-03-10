@@ -13,14 +13,6 @@ local eval = {}
 -- Unknown	Unknown	Unknown	Unknown	Unknown
 
 
-
-
--- Checks if the value is missing
-function Unknown(v)
-	return v == nil or v == ''
-end
-
-
 -- And performs a logical AND operation on the set of nullable boolean values
 -- true     true    true
 -- true     false   false
@@ -81,7 +73,7 @@ end
 -- nil	    true	nil
 -- nil	    false	nil
 -- nil	    nil	    nil
-function Xor(arr)
+function eval.Xor(arr)
     local result = false
     for i=1, arr.n do
         local v = arr[i]
@@ -91,6 +83,11 @@ function Xor(arr)
         result = nand(nand(result, nand(result, v)), nand(v, nand(result, v)))
     end
     return result
+end
+
+-- Checks if the value is missing
+function Unknown(v)
+	return v == nil or v == ''
 end
 
 -- Inverted AND operator
