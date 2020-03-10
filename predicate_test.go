@@ -28,6 +28,13 @@ func TestCompoundPredicate(t *testing.T) {
 		`eval.Or({eval.And({v.temperature and v.temperature < 90, v.temperature and v.temperature > 50; n=2}), v.humidity and v.humidity >= 80; n=2})`,
 	)
 
+	s := makeScript(code())
+	v, err := s.Run(context.Background(), map[string]int{
+		"temperature": 60,
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "true", v.String())
+
 	/*
 		http://dmg.org/pmml/v4-1/TreeModel.html
 
