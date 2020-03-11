@@ -85,6 +85,38 @@ function eval.Xor(arr)
     return result
 end
 
+-- The operator surrogate provides a special means to handle logical expressions with missing 
+-- values. It is applied to a sequence of predicates. The order of the predicates matters, the 
+-- first predicate is the primary, the next predicates are the surrogates. Evaluation order is
+-- left-to-right. The cascaded predicates are applied when the primary predicate evaluates to 
+-- UNKNOWN.
+function eval.Surrogate(arr)
+    local result = nil
+    for i=1, arr.n do
+        result = arr[i]
+        if not Unknown(result) then
+            return result
+        end
+    end
+    return result
+end
+
+-- Checks if the value is present in the set
+function eval.IsIn(target, array)
+    for i, v in ipairs(array) do
+        if v == target then
+            return true
+        end
+    end
+
+    return false
+end
+
+-- Checks if the value is missing in the set
+function eval.IsNotIn(target, array)
+	return not eval.IsIn(target, array)
+end
+
 -- Checks if the value is missing
 function Unknown(v)
 	return v == nil or v == ''

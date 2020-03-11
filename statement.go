@@ -210,3 +210,11 @@ func (s *Statement) Return() *Statement {
 func (s *Statement) Call(name string, args ...string) *Statement {
 	return s.Append("%s(%s)", name, strings.Join(args, ", "))
 }
+
+// Error sets the erroor internally and returns the statement
+func (s *Statement) Error(format string, args ...interface{}) *Statement {
+	if s.err == nil {
+		s.err = fmt.Errorf(format, args...)
+	}
+	return s
+}

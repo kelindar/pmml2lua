@@ -37,6 +37,8 @@ func (p *Predicate) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	}
 }
 
+// ----------------------------------------------------------------------------
+
 // CompoundPredicate ...
 type CompoundPredicate struct {
 	Operator   string
@@ -73,6 +75,8 @@ func (p *CompoundPredicate) UnmarshalXML(d *xml.Decoder, start xml.StartElement)
 	return nil
 }
 
+// ----------------------------------------------------------------------------
+
 // SimpleSetPredicate ...
 type SimpleSetPredicate struct {
 	Field     string      `xml:"field,attr"`
@@ -106,14 +110,6 @@ type SimplePredicate struct {
 	Extension []Extension `xml:"Extension"`
 }
 
-// Array ...
-type Array struct {
-	Length int       `xml:"n,attr,omitempty"`
-	Type   ArrayType `xml:"type,attr"`
-}
-
 // Value ...
 type Value string
 
-// ArrayType ...
-type ArrayType string

@@ -13,7 +13,9 @@
     </xs:simpleType>
   </xs:attribute>
 </xs:complexType>
+
 <xs:element name="Array" type="ArrayType"/>
+
 <xs:group name="NUM-ARRAY">
   <xs:choice>
     <xs:element ref="Array"/>

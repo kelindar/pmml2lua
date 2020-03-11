@@ -9,23 +9,112 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Benchmark_Predicate/compound-8         	  139858	      8533 ns/op	    3152 B/op	      72 allocs/op
+func Benchmark_Predicate(b *testing.B) {
+	input :=
+		`<CompoundPredicate booleanOperator="or">
+	<CompoundPredicate booleanOperator="and">
+		<SimplePredicate field="temperature" operator="lessThan" value="90"/>
+		<SimplePredicate field="temperature" operator="greaterThan" value="50"/>
+	</CompoundPredicate>
+	<SimplePredicate field="humidity" operator="greaterOrEqual" value="80"/>
+	<SimpleSetPredicate field="humidity" booleanOperator="isNotIn">
+		<Array n="5" type="int">1 2 3 4 5</Array>
+	</SimpleSetPredicate>
+</CompoundPredicate>`
+
+	var out schema.Predicate
+	body, global, code := scopeFor(input, &out)
+	body.With(
+		NewStatement().Return().CompoundPredicate(*out.CompoundPredicate, global),
+	)
+
+	s := makeScript(code())
+	b.Run("compound", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			s.Run(context.Background(), map[string]int{
+				"temperature": 60,
+			})
+		}
+	})
+}
+
+func TestSimpleSetPredicate(t *testing.T) {
+	input :=
+		`<SimpleSetPredicate field="value" booleanOperator="isNotIn">
+			<Array n="10" type="int">1 2 3 4 5 10 11 12 13 15</Array>
+		</SimpleSetPredicate>`
+
+	var out schema.Predicate
+	body, global, code := scopeFor(input, &out)
+	body.With(
+		NewStatement().Return().SimpleSetPredicate(*out.SimpleSetPredicate, global),
+	)
+
+	assert.Contains(t, code(),
+		`eval.IsNotIn(v.value, {1,2,3,4,5,10,11,12,13,15; n=10})`,
+	)
+
+	s := makeScript(code())
+	v, err := s.Run(context.Background(), map[string]int{
+		"value": 7,
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "true", v.String())
+}
+
+func TestSurrogate(t *testing.T) {
+	input :=
+		`<CompoundPredicate booleanOperator="surrogate">
+		<CompoundPredicate booleanOperator="and">
+		  <SimplePredicate field="temperature" operator="lessThan" value="90"/>
+		  <SimplePredicate field="temperature" operator="greaterThan" value="50"/>
+		</CompoundPredicate>
+		<SimplePredicate field="humidity" operator="greaterOrEqual" value="80"/>
+		<False/>
+	  </CompoundPredicate>`
+
+	var out schema.Predicate
+	body, global, code := scopeFor(input, &out)
+	body.With(
+		NewStatement().Return().CompoundPredicate(*out.CompoundPredicate, global),
+	)
+
+	assert.Contains(t, code(),
+		`eval.Surrogate({eval.And({v.temperature and v.temperature < 90, v.temperature and v.temperature > 50; n=2}), v.humidity and v.humidity >= 80, false; n=3})`,
+	)
+
+	s := makeScript(code())
+	v, err := s.Run(context.Background(), map[string]int{
+		"humidity": 60,
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "false", v.String())
+}
+
 func TestCompoundPredicate(t *testing.T) {
-	input := `<CompoundPredicate booleanOperator="or">
+	input :=
+		`<CompoundPredicate booleanOperator="or">
 		<CompoundPredicate booleanOperator="and">
 			<SimplePredicate field="temperature" operator="lessThan" value="90"/>
 			<SimplePredicate field="temperature" operator="greaterThan" value="50"/>
 		</CompoundPredicate>
 		<SimplePredicate field="humidity" operator="greaterOrEqual" value="80"/>
+		<SimpleSetPredicate field="humidity" booleanOperator="isNotIn">
+			<Array n="5" type="int">1 2 3 4 5</Array>
+		</SimpleSetPredicate>
 	</CompoundPredicate>`
 
 	var out schema.Predicate
 	body, global, code := scopeFor(input, &out)
 	body.With(
-		NewStatement().Return().CompoundPredicate(out.CompoundPredicate, global),
+		NewStatement().Return().CompoundPredicate(*out.CompoundPredicate, global),
 	)
 
 	assert.Contains(t, code(),
-		`eval.Or({eval.And({v.temperature and v.temperature < 90, v.temperature and v.temperature > 50; n=2}), v.humidity and v.humidity >= 80; n=2})`,
+		`eval.Or({eval.And({v.temperature and v.temperature < 90, v.temperature and v.temperature > 50; n=2}), v.humidity and v.humidity >= 80, eval.IsNotIn(v.humidity, {1,2,3,4,5; n=5}); n=3})`,
 	)
 
 	s := makeScript(code())
@@ -133,6 +222,18 @@ func TestSimplePredicate(t *testing.T) {
 			input:  map[string]float64{"age": 30},
 			expect: true,
 		},
+		{
+			xml:    `<SimplePredicate field="age" operator="isMissing" />`,
+			lua:    `v.age == nil `,
+			input:  map[string]int{},
+			expect: true,
+		},
+		{
+			xml:    `<SimplePredicate field="age" operator="isNotMissing" />`,
+			lua:    `v.age ~= nil `,
+			input:  map[string]int{"age": 12},
+			expect: true,
+		},
 	}
 
 	for _, tt := range td {
@@ -142,7 +243,7 @@ func TestSimplePredicate(t *testing.T) {
 			var out schema.Predicate
 			body, _, code := scopeFor(tt.xml, &out)
 			body.With(
-				NewStatement().Return().SimplePredicate(out.SimplePredicate),
+				NewStatement().Return().SimplePredicate(*out.SimplePredicate),
 			)
 
 			// Code must contain the statement

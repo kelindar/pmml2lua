@@ -1,7 +1,6 @@
 package pmml2lua
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/kelindar/pmml2lua/schema"
@@ -13,11 +12,11 @@ import (
 func (s *Scope) Predicate(v *schema.Predicate, global *Scope) Compiler {
 	switch {
 	case v.SimplePredicate != nil:
-		return NewStatement().SimplePredicate(v.SimplePredicate)
+		return NewStatement().SimplePredicate(*v.SimplePredicate)
 	case v.CompoundPredicate != nil:
-		return NewStatement().CompoundPredicate(v.CompoundPredicate, global)
-
-	//case v.SimpleSetPredicate != nil:
+		return NewStatement().CompoundPredicate(*v.CompoundPredicate, global)
+	case v.SimpleSetPredicate != nil:
+		return NewStatement().SimpleSetPredicate(*v.SimpleSetPredicate, global)
 	case v.True != nil:
 		return NewStatement().Boolean(true)
 	case v.False != nil:
@@ -32,7 +31,7 @@ func (s *Scope) Predicate(v *schema.Predicate, global *Scope) Compiler {
 }
 
 // CompoundPredicate generates the LUA code for the element.
-func (s *Statement) CompoundPredicate(v *schema.CompoundPredicate, global *Scope) *Statement {
+func (s *Statement) CompoundPredicate(v schema.CompoundPredicate, global *Scope) *Statement {
 	s.Append("eval.%s({", strings.Title(v.Operator))
 	for i, p := range v.Predicates {
 		switch fn := global.Predicate(&p, global).(type) {
@@ -50,30 +49,30 @@ func (s *Statement) CompoundPredicate(v *schema.CompoundPredicate, global *Scope
 	return s
 }
 
+// ----------------------------------------------------------------------------
+
 // BinaryOperator generates the LUA code for the element.
 func (s *Statement) BinaryOperator(v string) *Statement {
 	var operator string
 	switch v {
 	case "equal":
-		operator = "=="
+		operator = " == "
 	case "notEqual":
-		operator = "~="
+		operator = " ~= "
 	case "lessThan":
-		operator = "<"
+		operator = " < "
 	case "lessOrEqual":
-		operator = "<="
+		operator = " <= "
 	case "greaterThan":
-		operator = ">"
+		operator = " > "
 	case "greaterOrEqual":
-		operator = ">="
-
-	// TODO: support the two other operators
+		operator = " >= "
 	case "isMissing":
-		fallthrough
+		operator = " == nil "
 	case "isNotMissing":
-		fallthrough
+		operator = " ~= nil "
 	default:
-		s.err = fmt.Errorf("binary operator %v is not supported", v)
+		return s.Error("binary operator %v is not supported", v)
 	}
 
 	// Write the operator
@@ -81,18 +80,39 @@ func (s *Statement) BinaryOperator(v string) *Statement {
 }
 
 // SimplePredicate generates the LUA code for the element.
-func (s *Statement) SimplePredicate(v *schema.SimplePredicate) *Statement {
-	if v == nil {
-		s.err = errNilElement
-		return s
+func (s *Statement) SimplePredicate(v schema.SimplePredicate) *Statement {
+	if v.Operator == "isMissing" || v.Operator == "isNotMissing" {
+		return s.Field(v.Field).BinaryOperator(v.Operator)
 	}
 
-	return s.
-		Field(v.Field).
+	return s.Field(v.Field).
 		Append(" and ").
 		Field(v.Field).
-		Whitespace().
 		BinaryOperator(v.Operator).
-		Whitespace().
 		Value(v.Value)
+}
+
+// ----------------------------------------------------------------------------
+
+// SimpleSetPredicate generates the LUA code for the element.
+func (s *Statement) SimpleSetPredicate(v schema.SimpleSetPredicate, global *Scope) *Statement {
+	if v.Array == nil {
+		return s.Error("array must not be nil")
+	}
+
+	values, err := v.Array.CSV()
+	if err != nil {
+		return s.Error(err.Error())
+	}
+
+	/*_ = global.With(
+		NewStatement().Append("local array = {%s; n=%d}", values, v.Array.Length),
+	)
+	return s.Append("eval.%s(", strings.Title(v.Operator)).
+		Field(v.Field).
+		Append(", array)")*/
+
+	return s.Append("eval.%s(", strings.Title(v.Operator)).
+		Field(v.Field).
+		Append(", {%s; n=%d})", values, v.Array.Length)
 }
