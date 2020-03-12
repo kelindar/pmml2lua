@@ -44,8 +44,15 @@ func NewScope() *Scope {
 // Compile returns the compiled statement.
 func (s *Scope) Compile() ([]byte, error) {
 	var buf bytes.Buffer
-	for _, b := range s.dst {
-		compiled, err := b.Compile()
+	for _, v := range s.dst {
+		switch v := v.(type) {
+		case *Statement:
+			v.tab = s.tab
+		case *Scope:
+			v.tab = s.tab + 1
+		}
+
+		compiled, err := v.Compile()
 		if err != nil {
 			return nil, err
 		}
@@ -62,16 +69,14 @@ func (s *Scope) Name() string {
 
 // With adds the children to the scope.
 func (s *Scope) With(body ...Compiler) *Scope {
-	for _, v := range body {
-		switch v := v.(type) {
-		case *Statement:
-			v.tab = s.tab
-		case *Scope:
-			v.tab = s.tab + 1
-		}
-	}
+	return s.WithIf(true, body...)
+}
 
-	s.dst = append(s.dst, body...)
+// WithIf conditionally adds the children to the scope.
+func (s *Scope) WithIf(condition bool, body ...Compiler) *Scope {
+	if condition {
+		s.dst = append(s.dst, body...)
+	}
 	return s
 }
 
@@ -99,16 +104,31 @@ func (s *Scope) Function(name string, args ...string) *Scope {
 
 // Statement represents a single line statement
 type Statement struct {
-	buf *bytes.Buffer // The destination writer
-	tab int           // The number of tabs for indentation
-	err error         // The last error that has occured
+	buf  *bytes.Buffer // The destination writer
+	tab  int           // The number of tabs for indentation
+	err  error         // The last error that has occured
+	cond bool          // The condition to evaluate for the statement
 }
 
 // NewStatement prepares a new statement.
 func NewStatement() *Statement {
 	return &Statement{
-		buf: bytes.NewBuffer(nil),
+		buf:  bytes.NewBuffer(nil),
+		cond: true,
 	}
+}
+
+// Append creates a new formatting statement.
+func Append(format string, args ...interface{}) *Statement {
+	return AppendIf(true, format, args...)
+}
+
+// AppendIf creates a new conditional statement.
+func AppendIf(condition bool, format string, args ...interface{}) *Statement {
+	return (&Statement{
+		buf:  bytes.NewBuffer(nil),
+		cond: condition,
+	}).Append(format, args...)
 }
 
 // Compile returns the compiled statement.
@@ -120,6 +140,12 @@ func (s *Statement) Compile() ([]byte, error) {
 		)
 	}
 
+	// If the statement is disabled, do not generate anything
+	if !s.cond {
+		return nil, nil
+	}
+
+	// Writte identation to the buffer
 	var buffer bytes.Buffer
 	for i := 0; i < s.tab; i++ {
 		buffer.WriteRune('\t')

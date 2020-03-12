@@ -9,21 +9,21 @@ import (
 // ----------------------------------------------------------------------------
 
 // Predicate generates the LUA code for the element.
-func (s *Scope) Predicate(v *schema.Predicate, global *Scope) Compiler {
+func (s *Statement) Predicate(v *schema.Predicate, global *Scope) *Statement {
 	switch {
 	case v.SimplePredicate != nil:
-		return NewStatement().SimplePredicate(*v.SimplePredicate)
+		return s.SimplePredicate(*v.SimplePredicate)
 	case v.CompoundPredicate != nil:
-		return NewStatement().CompoundPredicate(*v.CompoundPredicate, global)
+		return s.CompoundPredicate(*v.CompoundPredicate, global)
 	case v.SimpleSetPredicate != nil:
-		return NewStatement().SimpleSetPredicate(*v.SimpleSetPredicate, global)
+		return s.SimpleSetPredicate(*v.SimpleSetPredicate, global)
 	case v.True != nil:
-		return NewStatement().Boolean(true)
+		return s.Boolean(true)
 	case v.False != nil:
-		return NewStatement().Boolean(false)
+		return s.Boolean(false)
 	}
 
-	return NewStatement()
+	return s
 
 	//id := "func_" + xid.New().String()
 	//fn := s.Function(id, "v")
@@ -32,15 +32,9 @@ func (s *Scope) Predicate(v *schema.Predicate, global *Scope) Compiler {
 
 // CompoundPredicate generates the LUA code for the element.
 func (s *Statement) CompoundPredicate(v schema.CompoundPredicate, global *Scope) *Statement {
-	s.Append("eval.%s({", strings.Title(v.Operator))
+	s.Append("tree.%s({", strings.Title(v.Operator))
 	for i, p := range v.Predicates {
-		switch fn := global.Predicate(&p, global).(type) {
-		case *Scope:
-			s.Call(fn.Name(), "v")
-		case *Statement:
-			s.Statement(fn)
-		}
-
+		s.Predicate(&p, global)
 		if i+1 < len(v.Predicates) {
 			s.Append(", ")
 		}
@@ -105,14 +99,7 @@ func (s *Statement) SimpleSetPredicate(v schema.SimpleSetPredicate, global *Scop
 		return s.Error(err.Error())
 	}
 
-	/*_ = global.With(
-		NewStatement().Append("local array = {%s; n=%d}", values, v.Array.Length),
-	)
-	return s.Append("eval.%s(", strings.Title(v.Operator)).
-		Field(v.Field).
-		Append(", array)")*/
-
-	return s.Append("eval.%s(", strings.Title(v.Operator)).
+	return s.Append("tree.%s(", strings.Title(v.Operator)).
 		Field(v.Field).
 		Append(", {%s; n=%d})", values, v.Array.Length)
 }

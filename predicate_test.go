@@ -54,7 +54,7 @@ func TestSimpleSetPredicate(t *testing.T) {
 	)
 
 	assert.Contains(t, code(),
-		`eval.IsNotIn(v.value, {1,2,3,4,5,10,11,12,13,15; n=10})`,
+		`tree.IsNotIn(v.value, {1,2,3,4,5,10,11,12,13,15; n=10})`,
 	)
 
 	s := makeScript(code())
@@ -83,7 +83,7 @@ func TestSurrogate(t *testing.T) {
 	)
 
 	assert.Contains(t, code(),
-		`eval.Surrogate({eval.And({v.temperature and v.temperature < 90, v.temperature and v.temperature > 50; n=2}), v.humidity and v.humidity >= 80, false; n=3})`,
+		`tree.Surrogate({tree.And({v.temperature and v.temperature < 90, v.temperature and v.temperature > 50; n=2}), v.humidity and v.humidity >= 80, false; n=3})`,
 	)
 
 	s := makeScript(code())
@@ -114,7 +114,7 @@ func TestCompoundPredicate(t *testing.T) {
 	)
 
 	assert.Contains(t, code(),
-		`eval.Or({eval.And({v.temperature and v.temperature < 90, v.temperature and v.temperature > 50; n=2}), v.humidity and v.humidity >= 80, eval.IsNotIn(v.humidity, {1,2,3,4,5; n=5}); n=3})`,
+		`tree.Or({tree.And({v.temperature and v.temperature < 90, v.temperature and v.temperature > 50; n=2}), v.humidity and v.humidity >= 80, tree.IsNotIn(v.humidity, {1,2,3,4,5; n=5}); n=3})`,
 	)
 
 	s := makeScript(code())
@@ -123,36 +123,6 @@ func TestCompoundPredicate(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, "true", v.String())
-
-	/*
-		http://dmg.org/pmml/v4-1/TreeModel.html
-
-		P       Q       AND     OR      XOR
-		True	True	True	True	False
-		True	False	False	True	True
-		True	Unknown	Unknown	True	Unknown
-		False	True	False	True	True
-		False	False	False	False	False
-		False	Unknown	False	Unknown	Unknown
-		Unknown	True	Unknown	True	Unknown
-		Unknown	False	False	Unknown	Unknown
-		Unknown	Unknown	Unknown	Unknown	Unknown
-
-	*/
-
-	/*
-		local V = {true, false, nil}
-
-		for i = 1, 3 do
-		for j = 1, 3 do
-			local P = V[i]
-			local Q = V[j]
-			local R = Or({P, Q; n=2})
-			print(P, Q, R)
-		end
-		end
-
-	*/
 }
 
 func TestSimplePredicate(t *testing.T) {
